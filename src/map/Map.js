@@ -1225,11 +1225,11 @@ export var Map = Evented.extend({
 		var zoomChanged = this._zoom !== zoom;
 		if (!noFireEvent) {
 			this
-			._moveStart(zoomChanged, false)
-			._move(center, zoom)
-			._moveEnd(zoomChanged);
+				._moveStart(zoomChanged, false)
+				._move(center, zoom)
+				._moveEnd(zoomChanged);
 		}
-		
+
 
 		// @event viewreset: Event
 		// Fired when the map needs to redraw its content (this usually happens
