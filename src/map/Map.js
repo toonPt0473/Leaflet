@@ -207,6 +207,38 @@ export var Map = Evented.extend({
 
 		return this;
 	},
+	fitboundSetView: function (center, zoom, options) {
+
+		zoom = zoom === undefined ? this._zoom : this._limitZoom(zoom);
+		center = this._limitCenter(toLatLng(center), zoom, this.options.maxBounds);
+		options = options || {};
+
+		this._stop();
+
+		if (this._loaded && !options.reset && options !== true) {
+
+			if (options.animate !== undefined) {
+				options.zoom = Util.extend({animate: options.animate}, options.zoom);
+				options.pan = Util.extend({animate: options.animate, duration: options.duration}, options.pan);
+			}
+
+			// try animating pan or zoom
+			var moved = (this._zoom !== zoom) ?
+				this._tryAnimatedZoom && this._tryAnimatedZoom(center, zoom, options.zoom) :
+				this._tryAnimatedPan(center, options.pan);
+
+			if (moved) {
+				// prevent resize handler call, the view will refresh after animation anyway
+				clearTimeout(this._sizeTimer);
+				return this;
+			}
+		}
+
+		// animation didn't start, just reset the map view
+		this._resetView(center, zoom, true);
+
+		return this;
+	},
 
 	// @method setZoom(zoom: Number, options?: Zoom/pan options): this
 	// Sets the zoom of the map.
@@ -292,7 +324,7 @@ export var Map = Evented.extend({
 		}
 
 		var target = this._getBoundsCenterZoom(bounds, options);
-		return this.setView(target.center, target.zoom, options);
+		return this.fitboundSetView(target.center, target.zoom, options);
 	},
 
 	// @method fitWorld(options?: fitBounds options): this
@@ -1181,7 +1213,7 @@ export var Map = Evented.extend({
 	// private methods that modify map state
 
 	// @section Map state change events
-	_resetView: function (center, zoom) {
+	_resetView: function (center, zoom, noFireEvent) {
 		DomUtil.setPosition(this._mapPane, new Point(0, 0));
 
 		var loading = !this._loaded;
@@ -1191,10 +1223,13 @@ export var Map = Evented.extend({
 		this.fire('viewprereset');
 
 		var zoomChanged = this._zoom !== zoom;
-		this
+		if (!noFireEvent) {
+			this
 			._moveStart(zoomChanged, false)
 			._move(center, zoom)
 			._moveEnd(zoomChanged);
+		}
+		
 
 		// @event viewreset: Event
 		// Fired when the map needs to redraw its content (this usually happens
